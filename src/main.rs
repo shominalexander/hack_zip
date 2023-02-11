@@ -9,35 +9,39 @@ fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String)
     Ok(file) => {
      match zip::ZipArchive::new(file) {
       Ok(mut items) => {
-       loop {
+       let mut index: usize = 0;
+
+       'passwords: loop {
         match receiver.recv() {
          Ok(password) => {
-          match items.by_index_decrypt(0, password.as_bytes()) {
-           Ok(result) => {
-            match result {
-             Ok(mut item) => {
-              match item.read_to_end(&mut Vec::with_capacity(item.size() as usize)) {
-               Ok(_) => {
-                println!("Password: {:?}", password);
+          loop {
+           match items.by_index_decrypt(index, password.as_bytes()) {
+            Ok(result) => {
+             match result {
+              Ok(mut item) => {
+               match item.read_to_end(&mut Vec::with_capacity(item.size() as usize)) {
+                Ok(_) => {
+                 println!("Password: {:?}", password);
 
-                break;
-               }//Ok(_) => {
+                 break 'passwords;
+                }//Ok(_) => {
 
-               Err(_) => { }
-              }//match item.read_to_end(&mut Vec::with_capacity(item.size() as usize)) {
-             }//Ok(mut item) => {
+                Err(_) => { break; }
+               }//match item.read_to_end(&mut Vec::with_capacity(item.size() as usize)) {
+              }//Ok(mut item) => {
 
-             Err(_) => { }
-            }//match result {
-           }//Ok(result) => {
+              Err(_) => { break; }
+             }//match result {
+            }//Ok(result) => {
 
-           Err(error) => { println!("match items.by_index_decrypt(0, password.as_bytes()): {:?}", error); break; }
-          }//match items.by_index_decrypt(0, password.as_bytes()) {
+            Err(error) => { println!("match items.by_index_decrypt({:?}, password.as_bytes()): {:?}", index, error); index += 1; if index > 2 { break 'passwords; } }
+           }//match items.by_index_decrypt(index, password.as_bytes()) {
+          }//loop {
          }//Ok(password) => {
 
          Err(error) => { println!("match receiver.recv(): {:?}", error); break; }
         }//match receiver.recv() {
-       }//loop {
+       }//'outer: loop {
       }//Ok(mut items) => {
 
       Err(error) => { println!("match zip::ZipArchive::new(file): {:?}", error); }
