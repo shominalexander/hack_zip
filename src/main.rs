@@ -34,7 +34,7 @@ fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String)
              }//match result {
             }//Ok(result) => {
 
-            Err(error) => { println!("match items.by_index_decrypt({:?}, password.as_bytes()): {:?}", index, error); index += 1; if index > 2 { break 'passwords; } }
+            Err(error) => { println!("match items.by_index_decrypt({:?}, password.as_bytes()): {:?}", index, error); index += 1; if index > 5 { break 'passwords; } }
            }//match items.by_index_decrypt(index, password.as_bytes()) {
           }//loop {
          }//Ok(password) => {
