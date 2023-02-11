@@ -95,7 +95,7 @@ fn main() {
       Ok(length_u8) => {
        match threads_string.parse::<u8>() {
         Ok(threads_u8) => {
-         let (sender, receiver): (Sender<String>, Receiver<String>) = crossbeam_channel::bounded(2000000);
+         let (sender, receiver): (Sender<String>, Receiver<String>) = crossbeam_channel::bounded(200000);
 
          match channel_filling(passwords_creating(chars, length_u8), sender) {
           Ok(thread_sender) => {
