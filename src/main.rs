@@ -12,7 +12,7 @@ fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String)
        loop {
         match receiver.recv() {
          Ok(password) => {
-          match items.by_index_decrypt(2, password.as_bytes()) {
+          match items.by_index_decrypt(0, password.as_bytes()) {
            Ok(result) => {
             match result {
              Ok(mut item) => {
