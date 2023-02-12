@@ -141,16 +141,16 @@ fn main() {
 
            for thread_recipient in threads_recipient {
             match thread_recipient.join() {
-             Ok(result) => { println!("match thread_recipient.join(), result: {:?}", result); }
+             Ok(_) => { }
 
-             Err(error) => { println!("match thread_recipient.join(): {:?}", error); }
+             Err(error) => { println!("{:?}", error); }
             }//match thread_recipient.join() {
            }//for thread_recipient in threads_recipient {
 
            match thread_sender.join() {
-            Ok(result) => { println!("match thread_sender.join(), result: {:?}", result); }
+            Ok(_) => { }
 
-            Err(error) => { println!("match thread_sender.join(): {:?}", error); }
+            Err(error) => { println!("{:?}", error); }
            }//match thread_sender.join() {
           }//Ok(thread_sender) => {
 
