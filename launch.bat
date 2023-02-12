@@ -1,6 +1,6 @@
 echo on
 
-cargo run -- ".\archive.zip" "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" "4" "5"
+cargo run -- ".\archive.zip" "abcdefghijklmnopqrstuvwxyz" "5" "5"
 
 pause
 
