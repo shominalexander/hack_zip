@@ -156,7 +156,7 @@ fn main() {
       Ok(size_usize) => {
        match threads_string.parse::<usize>() {
         Ok(threads_usize) => {
-         let (sender, receiver): (crossbeam_channel::Sender<String>, crossbeam_channel::Receiver<String>) = crossbeam_channel::bounded(2000);
+         let (sender, receiver): (crossbeam_channel::Sender<String>, crossbeam_channel::Receiver<String>) = crossbeam_channel::bounded(2000000);
 
          match channel_filling(chars, size_usize, sender) {
           Ok(thread_sender) => {
@@ -164,9 +164,7 @@ fn main() {
 
            let mut threads_recipient: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
-           loop {
-            index += 1; 
-
+           while index < threads_usize {
             match channel_emptying(archive.clone(), receiver.clone(), format!("thread_{}", index)) {
              Ok(thread_recipient) => {
               threads_recipient.push(thread_recipient);
@@ -176,11 +174,8 @@ fn main() {
              Err(error) => { println!("match channel_emptying(archive.clone(), receiver.clone(), format!(thread, index)): {:?}", error); }
             }//match channel_emptying(archive.clone(), receiver.clone(), format!("thread_{}", index)) {
 
-            if index == threads_usize {
-             break;
-
-            }//if index == threads_usize {
-           }//loop {
+            index += 1; 
+           }//while index < threads_usize {
 
            for thread_recipient in threads_recipient {
             match thread_recipient.join() {
