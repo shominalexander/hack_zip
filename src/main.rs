@@ -2,6 +2,81 @@ use crossbeam_channel::{ Receiver, Sender };
 use std::io::Read;
 use std::thread::JoinHandle;
 
+struct Password { chars           : String
+                , indices_in_chars: Vec<usize>
+                }
+
+impl Password {
+ fn incriment(&mut self) -> bool {
+  let     chars_amount     : usize = self.chars.len()           ;
+  let mut index_in_password: usize = 0                          ;
+  let     password_size    : usize = self.indices_in_chars.len();
+
+  while index_in_password < password_size {
+   if index_in_password < password_size - 1 {
+    if self.indices_in_chars[index_in_password] < chars_amount - 1 {
+     self.indices_in_chars[index_in_password] += 1;
+
+     return true;
+
+    } else {//if self.indices_in_chars[index_in_password] < chars_amount - 1 {
+     self.indices_in_chars[index_in_password] = 0;
+
+     index_in_password += 1;
+    }//} else {//if self.indices_in_chars[index_in_password] < chars_amount - 1 {
+
+   } else {//if index_in_password < password_size - 1 {
+    if self.indices_in_chars[index_in_password] < chars_amount - 1 {
+     self.indices_in_chars[index_in_password] += 1;
+
+     return true;
+
+    } else {//if self.indices_in_chars[index_in_password] < chars_amount - 1 {
+     index_in_password += 1;
+    
+    }//} else {//if self.indices_in_chars[index_in_password] < chars_amount - 1 {
+   }//} else {//if index_in_password < password_size - 1 {
+  }//while index_in_password < password_size {
+
+  index_in_password = 0;
+
+  while index_in_password < password_size {
+   self.indices_in_chars[index_in_password] = 0;
+
+   index_in_password += 1;
+  }//while index_in_password < password_size {
+
+  return false;
+ }//fn incriment(&mut self) -> bool {
+
+ fn make(&mut self) -> String {
+  let mut password: String = String::new();
+
+  for index_in_chars in &self.indices_in_chars {
+   if let Some(char) = self.chars.chars().nth(*index_in_chars) {
+    password = format!("{}{}", password, char);
+
+   }//if let Some(char) = self.chars.chars().nth(*index_in_chars) {
+  }//for index_in_chars in &self.indices_in_chars {
+
+  password
+ }//fn make(&mut self) -> String {
+
+ fn new(chars: String, password_size: usize) -> Self {
+  let mut index_in_password: usize = 0;
+
+  let mut password = Password { chars: chars.clone(), indices_in_chars: Vec::new() };
+
+  while index_in_password < password_size {
+   password.indices_in_chars.push(0usize);
+   
+   index_in_password += 1;
+  }//while index_in_password < password_size {
+
+  password
+ }//fn new(chars: String, password_size: usize) -> Self {
+}//impl Password {
+
 fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
@@ -54,70 +129,40 @@ fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String)
  )//std::thread::Builder::new().name(thread).spawn(
 }//fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
 
-fn channel_filling(chars: String, length: u8, sender: Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
- let mut all: Vec<String> = Vec::new();
-
- let mut index: u8 = 0;
-
- let mut part: Vec<String> = Vec::new();
-
- if length > 0 {
-  if length > 1 {
-   while index < length {
-    if part.len() > 0 {
-     for item in &part {
-      for char in chars.chars() {
-       all.push(format!("{}{}", item, char));
-
-      }//for char in chars.chars() {
-     }//for item in &part {
-
-    } else {//if part.len() > 0 {
-     for char in chars.chars() {
-      all.push(format!("{}", char));
-
-     }//for char in chars.chars() {
-    }//} else {//if part.len() > 0 {
-
-    part = all.clone();
-
-    index += 1;
-   }//while index < length {
-
-  } else {//if length > 1 {
-   for char in chars.chars() {
-    all.push(format!("{}", char));
-
-   }//for char in chars.chars() {
-  }//} else {//if length > 1 {
- }//if length > 0 {
-
+fn channel_filling(chars: String, password_size: usize, sender: Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
   move || {
-   for password in all {
-    match sender.send(password) {
+   let mut password: Password = Password::new(chars.clone(), password_size);
+
+   loop {
+    match sender.send(password.make()) {
      Ok(_)      => { }
-     Err(error) => { println!("match sender.send(password): {:?}", error); break } // channel disconnected, stop thread
+     Err(error) => { println!("{:?}", error); break } // channel disconnected, stop thread
     }//match send_sender.send(password) {
-   }//for password in all {
+
+    if !password.incriment() {
+     break;
+
+    }//if !password.incriment() {
+   }//loop {
   }//move || {
  )//std::thread::Builder::new().name("sender".to_string()).spawn(
-}//fn channel_filling(chars: String, length: u8, sender: Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
+}//fn channel_filling(chars: String, password_size: usize, sender: Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
 
 fn main() {
  if let Some(archive) = std::env::args().nth(1) {
   if let Some(chars) = std::env::args().nth(2) {
-   if let Some(length_string) = std::env::args().nth(3) {
+   if let Some(size_string) = std::env::args().nth(3) {
     if let Some(threads_string) = std::env::args().nth(4) {
-     match length_string.parse::<u8>() {
-      Ok(length_u8) => {
-       match threads_string.parse::<u8>() {
-        Ok(threads_u8) => {
+     match size_string.parse::<usize>() {
+      Ok(size_usize) => {
+       match threads_string.parse::<usize>() {
+        Ok(threads_usize) => {
          let (sender, receiver): (Sender<String>, Receiver<String>) = crossbeam_channel::bounded(2000);
 
-         match channel_filling(chars, length_u8, sender) {
+         match channel_filling(chars, size_usize, sender) {
           Ok(thread_sender) => {
-           let mut index: u8 = 0;
+           let mut index: usize = 0;
 
            let mut threads_recipient: Vec<JoinHandle<()>> = vec![];
 
@@ -133,10 +178,10 @@ fn main() {
              Err(error) => { println!("match channel_emptying(archive.clone(), receiver.clone(), format!(thread, index)): {:?}", error); }
             }//match channel_emptying(archive.clone(), receiver.clone(), format!("thread_{}", index)) {
 
-            if index == threads_u8 {
+            if index == threads_usize {
              break;
 
-            }//if index == threads_u8 {
+            }//if index == threads_usize {
            }//loop {
 
            for thread_recipient in threads_recipient {
@@ -155,17 +200,17 @@ fn main() {
           }//Ok(thread_sender) => {
 
           Err(error) => { println!("channel_filling(passwords_creating(chars, length_u8), sender): {:?}", error); }
-         }//match channel_filling(chars, length_u8, sender) {
-        }//Ok(threads_u8) => {
+         }//match channel_filling(chars, size_usize, sender) {
+        }//Ok(threads_usize) => {
 
         Err(error) => { println!("match threads.parse::<u8>(): {:?}", error); }
-       }//match threads.parse::<u8>() {
-      }//Ok(length_u8) => {
+       }//match threads_string.parse::<usize>() {
+      }//Ok(size_usize) => {
 
       Err(error) => { println!("match length_string.parse::<u8>(): {:?}", error); }
-     }//match length_string.parse::<u8>() {
+     }//match size_string.parse::<usize>() {
     }//if let Some(threads_string) = std::env::args().nth(4) {
-   }//if let Some(length_string) = std::env::args().nth(3) {
+   }//if let Some(size_string) = std::env::args().nth(3) {
   }//if let Some(chars) = std::env::args().nth(2) {
  }//if let Some(archive) = std::env::args().nth(1) {
 }//fn main() {
