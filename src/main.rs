@@ -107,7 +107,7 @@ fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<Strin
              }//match result {
             }//Ok(result) => {
 
-            Err(error) => { println!("by_index_decrypt({:?}, password): {:?}", index, error); index += 1; if index > 5 { break 'passwords; } }
+            Err(error) => { println!("items.by_index_decrypt({:?}, password): {:?}", index, error); index += 1; if index > 5 { break 'passwords; } }
            }//match items.by_index_decrypt(index, password.as_bytes()) {
           }//loop {
          }//Ok(password) => {
