@@ -1,4 +1,3 @@
-use crossbeam_channel::{ Receiver, Sender };
 use std::io::Read;
 use std::thread::JoinHandle;
 
@@ -77,7 +76,7 @@ impl Password {
  }//fn new(chars: String, password_size: usize) -> Self {
 }//impl Password {
 
-fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
+fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
    match std::fs::File::open(archive) {
@@ -127,9 +126,9 @@ fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String)
    }//match std::fs::File::open(archive) {
   }//move || {
  )//std::thread::Builder::new().name(thread).spawn(
-}//fn channel_emptying(archive: String, receiver: Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
+}//fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
 
-fn channel_filling(chars: String, password_size: usize, sender: Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
+fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channel::Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
   move || {
    let mut password: Password = Password::new(chars.clone(), password_size);
@@ -147,7 +146,7 @@ fn channel_filling(chars: String, password_size: usize, sender: Sender<String>) 
    }//loop {
   }//move || {
  )//std::thread::Builder::new().name("sender".to_string()).spawn(
-}//fn channel_filling(chars: String, password_size: usize, sender: Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
+}//fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channel::Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
 
 fn main() {
  if let Some(archive) = std::env::args().nth(1) {
@@ -158,7 +157,7 @@ fn main() {
       Ok(size_usize) => {
        match threads_string.parse::<usize>() {
         Ok(threads_usize) => {
-         let (sender, receiver): (Sender<String>, Receiver<String>) = crossbeam_channel::bounded(2000);
+         let (sender, receiver): (crossbeam_channel::Sender<String>, crossbeam_channel::Receiver<String>) = crossbeam_channel::bounded(2000);
 
          match channel_filling(chars, size_usize, sender) {
           Ok(thread_sender) => {
