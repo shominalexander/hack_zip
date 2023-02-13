@@ -1,5 +1,4 @@
 use std::io::Read;
-use std::thread::JoinHandle;
 
 struct Password { chars           : String
                 , indices_in_chars: Vec<usize>
@@ -76,7 +75,7 @@ impl Password {
  }//fn new(chars: String, password_size: usize) -> Self {
 }//impl Password {
 
-fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
+fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
    match std::fs::File::open(archive) {
@@ -126,9 +125,9 @@ fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<Strin
    }//match std::fs::File::open(archive) {
   }//move || {
  )//std::thread::Builder::new().name(thread).spawn(
-}//fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<String>, thread: String) -> Result<JoinHandle<()>, std::io::Error> {
+}//fn channel_emptying(archive: String, receiver: crossbeam_channel::Receiver<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
-fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channel::Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
+fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
   move || {
    let mut password: Password = Password::new(chars.clone(), password_size);
@@ -146,7 +145,7 @@ fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channe
    }//loop {
   }//move || {
  )//std::thread::Builder::new().name("sender".to_string()).spawn(
-}//fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channel::Sender<String>) -> Result<JoinHandle<()>, std::io::Error> {
+}//fn channel_filling(chars: String, password_size: usize, sender: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
 fn main() {
  if let Some(archive) = std::env::args().nth(1) {
@@ -163,7 +162,7 @@ fn main() {
           Ok(thread_sender) => {
            let mut index: usize = 0;
 
-           let mut threads_recipient: Vec<JoinHandle<()>> = vec![];
+           let mut threads_recipient: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
            loop {
             index += 1; 
