@@ -75,7 +75,7 @@ impl Password {
  }//fn new(chars: String, password_size: usize) -> Self {
 }//impl Password {
 
-fn channel_emptying(archive: String, notification_sender: std::sync::mpsc::Sender<String>, thread: String, verification_receiver: crossbeam_channel::Receiver<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+fn channel_emptying(archive: String, termination_sender: std::sync::mpsc::Sender<String>, thread: String, verification_receiver: crossbeam_channel::Receiver<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
    match std::fs::File::open(archive) {
@@ -94,14 +94,14 @@ fn channel_emptying(archive: String, notification_sender: std::sync::mpsc::Sende
               Ok(mut item) => {
                match item.read_to_end(&mut Vec::with_capacity(item.size() as usize)) {
                 Ok(_) => {
-                 match notification_sender.send(password) {
+                 match termination_sender.send(password) {
                   Ok(_) => {
                    break 'passwords;
 
                   }//Ok(result) => {
 
                   Err(error) => { println!("match send_password_for_notification.send(password): {:?}", error); }
-                 }//match notification_sender.send(password) {
+                 }//match termination_sender.send(password) {
 
                  break 'passwords;
                 }//Ok(_) => {
@@ -132,7 +132,7 @@ fn channel_emptying(archive: String, notification_sender: std::sync::mpsc::Sende
    }//match std::fs::File::open(archive) {
   }//move || {
  )//std::thread::Builder::new().name(thread).spawn(
-}//fn channel_emptying(archive: String, notification_sender: std::sync::mpsc::Sender<String>, thread: String, verification_receiver: crossbeam_channel::Receiver<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+}//fn channel_emptying(archive: String, termination_sender: std::sync::mpsc::Sender<String>, thread: String, verification_receiver: crossbeam_channel::Receiver<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
 fn channel_filling(chars: String, password_size: usize, verification_sender: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
@@ -163,7 +163,7 @@ fn main() {
       Ok(size_usize) => {
        match threads_string.parse::<usize>() {
         Ok(threads_usize) => {
-         let (notification_sender, notification_receiver): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
+         let (termination_sender, termination_receiver): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
 
          let (verification_sender, verification_receiver): (crossbeam_channel::Sender<String>, crossbeam_channel::Receiver<String>) = crossbeam_channel::bounded(2000);
 
@@ -174,20 +174,20 @@ fn main() {
            let mut threads_recipient: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
            while index < threads_usize {
-            match channel_emptying(archive.clone(), notification_sender.clone(), format!("thread_{}", index), verification_receiver.clone()) {
+            match channel_emptying(archive.clone(), termination_sender.clone(), format!("thread_{}", index), verification_receiver.clone()) {
              Ok(thread_recipient) => {
               threads_recipient.push(thread_recipient);
 
              }//Ok(thread_recipient) => {
 
              Err(error) => { println!("match channel_emptying(archive.clone(), receiver.clone(), format!(thread, index)): {:?}", error); }
-            }//match channel_emptying(archive.clone(), notification_sender.clone(), format!("thread_{}", index), verification_receiver.clone()) {
+            }//match channel_emptying(archive.clone(), termination_sender.clone(), format!("thread_{}", index), verification_receiver.clone()) {
 
             index += 1; 
            }//while index < threads_usize {
 
            loop {
-            match notification_receiver.try_recv() {
+            match termination_receiver.try_recv() {
              Ok(password) => {
               println!("Password: {:?}", password);
 
@@ -217,7 +217,7 @@ fn main() {
               //Do nothing ...
 
              }//Err(std::sync::mpsc::TryRecvError::Empty) => {
-            }//match notification_receiver.try_recv() {
+            }//match termination_receiver.try_recv() {
            }//loop {
           }//Ok(thread_sender) => {
 
