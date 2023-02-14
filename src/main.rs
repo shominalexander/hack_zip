@@ -75,7 +75,7 @@ impl Password {
  }//fn new(chars: String, password_size: usize) -> Self {
 }//impl Password {
 
-fn channel_emptying(archive: String, receiver_password_for_verification: crossbeam_channel::Receiver<String>, send_password_for_notification: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+fn channel_emptying(archive: String, verification_receiver: crossbeam_channel::Receiver<String>, notification_sender: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
    match std::fs::File::open(archive) {
@@ -85,7 +85,7 @@ fn channel_emptying(archive: String, receiver_password_for_verification: crossbe
        let mut index: usize = 0;
 
        'passwords: loop {
-        match receiver_password_for_verification.recv() {
+        match verification_receiver.recv() {
          Ok(password) => {
           loop {
            match items.by_index_decrypt(index, password.as_bytes()) {
@@ -94,14 +94,14 @@ fn channel_emptying(archive: String, receiver_password_for_verification: crossbe
               Ok(mut item) => {
                match item.read_to_end(&mut Vec::with_capacity(item.size() as usize)) {
                 Ok(_) => {
-                 match send_password_for_notification.send(password) {
+                 match notification_sender.send(password) {
                   Ok(_) => {
                    break 'passwords;
 
                   }//Ok(result) => {
 
                   Err(error) => { println!("match send_password_for_notification.send(password): {:?}", error); }
-                 }//match send_password_for_notification.send(password) {
+                 }//match notification_sender.send(password) {
 
                  break 'passwords;
                 }//Ok(_) => {
@@ -120,7 +120,7 @@ fn channel_emptying(archive: String, receiver_password_for_verification: crossbe
          }//Ok(password) => {
 
          Err(error) => { println!("match receiver.recv(): {:?}", error); break; }
-        }//match receiver_password_for_check.recv() {
+        }//match verification_receiver.recv() {
        }//'outer: loop {
       }//Ok(mut items) => {
 
@@ -132,18 +132,18 @@ fn channel_emptying(archive: String, receiver_password_for_verification: crossbe
    }//match std::fs::File::open(archive) {
   }//move || {
  )//std::thread::Builder::new().name(thread).spawn(
-}//fn channel_emptying(archive: String, receiver_password_for_verification: crossbeam_channel::Receiver<String>, send_password_for_notification: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+}//fn channel_emptying(archive: String, verification_receiver: crossbeam_channel::Receiver<String>, notification_send: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
-fn channel_filling(chars: String, password_size: usize, send_password_for_verification: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+fn channel_filling(chars: String, password_size: usize, verification_sender: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
   move || {
    let mut password: Password = Password::new(chars.clone(), password_size);
 
    loop {
-    match send_password_for_verification.send(password.make()) {
+    match verification_sender.send(password.make()) {
      Ok(_)      => { }
      Err(error) => { println!("{:?}", error); break } // channel disconnected, stop thread
-    }//match send_password_for_verification.send(password.make()) {
+    }//match verification_sender.send(password.make()) {
 
     if !password.incriment() {
      break;
@@ -152,7 +152,7 @@ fn channel_filling(chars: String, password_size: usize, send_password_for_verifi
    }//loop {
   }//move || {
  )//std::thread::Builder::new().name("sender".to_string()).spawn(
-}//fn channel_filling(chars: String, password_size: usize, send_password_for_verification: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+}//fn channel_filling(chars: String, password_size: usize, verification_sender: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
 fn main() {
  if let Some(archive) = std::env::args().nth(1) {
@@ -163,31 +163,31 @@ fn main() {
       Ok(size_usize) => {
        match threads_string.parse::<usize>() {
         Ok(threads_usize) => {
-         let (send_password_for_notification, receiver_password_for_notification): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
+         let (notification_sender, notification_receiver): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
 
-         let (send_password_for_verification, receiver_password_for_verification): (crossbeam_channel::Sender<String>, crossbeam_channel::Receiver<String>) = crossbeam_channel::bounded(2000);
+         let (verification_sender, verification_receiver): (crossbeam_channel::Sender<String>, crossbeam_channel::Receiver<String>) = crossbeam_channel::bounded(2000);
 
-         match channel_filling(chars, size_usize, send_password_for_verification) {
+         match channel_filling(chars, size_usize, verification_sender) {
           Ok(thread_sender) => {
            let mut index: usize = 0;
 
            let mut threads_recipient: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
            while index < threads_usize {
-            match channel_emptying(archive.clone(), receiver_password_for_verification.clone(), send_password_for_notification.clone(), format!("thread_{}", index)) {
+            match channel_emptying(archive.clone(), verification_receiver.clone(), notification_sender.clone(), format!("thread_{}", index)) {
              Ok(thread_recipient) => {
               threads_recipient.push(thread_recipient);
 
              }//Ok(thread_recipient) => {
 
              Err(error) => { println!("match channel_emptying(archive.clone(), receiver.clone(), format!(thread, index)): {:?}", error); }
-            }//match channel_emptying(archive.clone(), receiver_password_for_verification.clone(), send_password_for_notification.clone(), format!("thread_{}", index)) {
+            }//match channel_emptying(archive.clone(), verification_receiver.clone(), notification_sender.clone(), format!("thread_{}", index)) {
 
             index += 1; 
            }//while index < threads_usize {
 
            loop {
-            match receiver_password_for_notification.try_recv() {
+            match notification_receiver.try_recv() {
              Ok(password) => {
               println!("Password: {:?}", password);
 
@@ -217,12 +217,12 @@ fn main() {
               //Do nothing ...
 
              }//Err(std::sync::mpsc::TryRecvError::Empty) => {
-            }//match receiver_password_for_notification.try_recv() {
+            }//match notification_receiver.try_recv() {
            }//loop {
           }//Ok(thread_sender) => {
 
           Err(error) => { println!("channel_filling(passwords_creating(chars, length_u8), sender): {:?}", error); }
-         }//match channel_filling(chars, size_usize, send_password_for_verification) {
+         }//match channel_filling(chars, size_usize, verification_sender) {
         }//Ok(threads_usize) => {
 
         Err(error) => { println!("match threads.parse::<u8>(): {:?}", error); }
