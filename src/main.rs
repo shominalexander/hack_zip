@@ -75,7 +75,7 @@ impl Password {
  }//fn new(chars: String, password_size: usize) -> Self {
 }//impl Password {
 
-fn channel_emptying(archive: String, verification_receiver: crossbeam_channel::Receiver<String>, notification_sender: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+fn channel_emptying(archive: String, notification_sender: std::sync::mpsc::Sender<String>, thread: String, verification_receiver: crossbeam_channel::Receiver<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
    match std::fs::File::open(archive) {
@@ -132,7 +132,7 @@ fn channel_emptying(archive: String, verification_receiver: crossbeam_channel::R
    }//match std::fs::File::open(archive) {
   }//move || {
  )//std::thread::Builder::new().name(thread).spawn(
-}//fn channel_emptying(archive: String, verification_receiver: crossbeam_channel::Receiver<String>, notification_send: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+}//fn channel_emptying(archive: String, notification_sender: std::sync::mpsc::Sender<String>, thread: String, verification_receiver: crossbeam_channel::Receiver<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
 fn channel_filling(chars: String, password_size: usize, verification_sender: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
@@ -174,14 +174,14 @@ fn main() {
            let mut threads_recipient: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
            while index < threads_usize {
-            match channel_emptying(archive.clone(), verification_receiver.clone(), notification_sender.clone(), format!("thread_{}", index)) {
+            match channel_emptying(archive.clone(), notification_sender.clone(), format!("thread_{}", index), verification_receiver.clone()) {
              Ok(thread_recipient) => {
               threads_recipient.push(thread_recipient);
 
              }//Ok(thread_recipient) => {
 
              Err(error) => { println!("match channel_emptying(archive.clone(), receiver.clone(), format!(thread, index)): {:?}", error); }
-            }//match channel_emptying(archive.clone(), verification_receiver.clone(), notification_sender.clone(), format!("thread_{}", index)) {
+            }//match channel_emptying(archive.clone(), notification_sender.clone(), format!("thread_{}", index), verification_receiver.clone()) {
 
             index += 1; 
            }//while index < threads_usize {
