@@ -75,7 +75,7 @@ impl Password {
  }//fn new(chars: String, password_size: usize) -> Self {
 }//impl Password {
 
-fn channel_emptying(archive: String, receiver_password_for_check: crossbeam_channel::Receiver<String>, send_password_for_notification: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+fn channel_emptying(archive: String, receiver_password_for_verification: crossbeam_channel::Receiver<String>, send_password_for_notification: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name(thread).spawn(
   move || {
    match std::fs::File::open(archive) {
@@ -85,7 +85,7 @@ fn channel_emptying(archive: String, receiver_password_for_check: crossbeam_chan
        let mut index: usize = 0;
 
        'passwords: loop {
-        match receiver_password_for_check.recv() {
+        match receiver_password_for_verification.recv() {
          Ok(password) => {
           loop {
            match items.by_index_decrypt(index, password.as_bytes()) {
@@ -132,7 +132,7 @@ fn channel_emptying(archive: String, receiver_password_for_check: crossbeam_chan
    }//match std::fs::File::open(archive) {
   }//move || {
  )//std::thread::Builder::new().name(thread).spawn(
-}//fn channel_emptying(archive: String, receiver_password_for_check: crossbeam_channel::Receiver<String>, send_password_for_notification: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
+}//fn channel_emptying(archive: String, receiver_password_for_verification: crossbeam_channel::Receiver<String>, send_password_for_notification: std::sync::mpsc::Sender<String>, thread: String) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
 
 fn channel_filling(chars: String, password_size: usize, send_password_for_verification: crossbeam_channel::Sender<String>) -> Result<std::thread::JoinHandle<()>, std::io::Error> {
  std::thread::Builder::new().name("sender".to_string()).spawn(
